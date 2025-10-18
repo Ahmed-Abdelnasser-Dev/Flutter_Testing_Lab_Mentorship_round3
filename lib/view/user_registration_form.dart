@@ -1,4 +1,7 @@
+// user_registration_form.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_testing_lab/logic/register_manager.dart';
+import 'package:flutter_testing_lab/models/register_form_model.dart';
 
 class UserRegistrationForm extends StatefulWidget {
   const UserRegistrationForm({super.key});
@@ -9,35 +12,51 @@ class UserRegistrationForm extends StatefulWidget {
 
 class _UserRegistrationFormState extends State<UserRegistrationForm> {
   final _formKey = GlobalKey<FormState>();
+
+  final _model = RegisterFormModel();
+  final _manager = RegisterManager();
+
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _nameController = TextEditingController();
 
   bool _isLoading = false;
-  String _message = '';
 
-  bool isValidEmail(String email) {
-    return email.contains('@');
-  }
-
-  bool isValidPassword(String password) {
-    return true;
+  void _updateModel() {
+    _model.name = _nameController.text.trim();
+    _model.email = _emailController.text.trim();
+    _model.password = _passwordController.text;
+    _model.confirmPassword = _confirmPasswordController.text;
   }
 
   Future<void> _submitForm() async {
+    _updateModel();
+
     setState(() {
       _isLoading = true;
-      _message = '';
     });
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
+    final result = await _manager.submitForm(_model);
 
     setState(() {
       _isLoading = false;
-      _message = 'Registration successful!';
     });
+
+    if (!_manager.validateForm(_model)) {
+      setState(() {});
+      return;
+    }
+
+    // Show submission result
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result),
+        backgroundColor: result.contains('successful')
+            ? Colors.green
+            : Colors.red,
+      ),
+    );
   }
 
   @override
@@ -51,74 +70,42 @@ class _UserRegistrationFormState extends State<UserRegistrationForm> {
           children: [
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Full Name',
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
+                errorText: _model.nameError,
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your full name';
-                }
-                if (value.length < 2) {
-                  return 'Name must be at least 2 characters';
-                }
-                return null;
-              },
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _emailController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Email',
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
+                errorText: _model.emailError,
               ),
               keyboardType: TextInputType.emailAddress,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your email';
-                }
-                if (!isValidEmail(value)) {
-                  return 'Please enter a valid email';
-                }
-                return null;
-              },
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _passwordController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Password',
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
                 helperText: 'At least 8 characters with numbers and symbols',
+                errorText: _model.passwordError,
               ),
               obscureText: true,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter a password';
-                }
-                if (!isValidPassword(value)) {
-                  return 'Password is too weak';
-                }
-                return null;
-              },
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _confirmPasswordController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Confirm Password',
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
+                errorText: _model.confirmPasswordError,
               ),
               obscureText: true,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please confirm your password';
-                }
-                if (value != _passwordController.text) {
-                  return 'Passwords do not match';
-                }
-                return null;
-              },
             ),
             const SizedBox(height: 24),
             ElevatedButton(
@@ -127,20 +114,6 @@ class _UserRegistrationFormState extends State<UserRegistrationForm> {
                   ? const CircularProgressIndicator()
                   : const Text('Register'),
             ),
-            if (_message.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: Text(
-                  _message,
-                  style: TextStyle(
-                    color: _message.contains('successful')
-                        ? Colors.green
-                        : Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
           ],
         ),
       ),
@@ -149,10 +122,10 @@ class _UserRegistrationFormState extends State<UserRegistrationForm> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _nameController.dispose();
     super.dispose();
   }
 }
